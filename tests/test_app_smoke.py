@@ -19,6 +19,21 @@ def _write_sample(tmp_path):
     return report, bars_file
 
 
+def _write_losing_sample(tmp_path):
+    """Same planted-edge trades as _write_sample with direction inverted, so the
+    timing that beat random entry now loses to it (mirrors test_battery's
+    _losing_trades; point value fixed at 2.0, matching make_trades' default)."""
+    bars = make_bars(n=4000, seed=30)
+    trades = make_trades(bars, n=80, seed=31, planted_edge=True)
+    trades["direction"] = -trades["direction"]
+    trades["gross_pnl"] = (trades.direction * (trades.exit_price - trades.entry_price) * 2.0 * trades.contracts).round(2)
+    trades["net_pnl"] = (trades.gross_pnl - 2 * (trades.comm_side + trades.slip_side)).round(2)
+    report, bars_file = tmp_path / "report.csv", tmp_path / "bars.txt"
+    report.write_bytes(trades_to_report_text(trades).encode("utf-8"))
+    bars_file.write_bytes(bars_to_ts_text(bars).encode("utf-8"))
+    return report, bars_file
+
+
 def test_app_renders_without_files():
     at = AppTest.from_file(APP, default_timeout=60).run()
     assert not at.exception, [str(e) for e in at.exception]
@@ -40,6 +55,19 @@ def test_app_renders_full_battery_on_sample(tmp_path, monkeypatch):
     joined = "\n".join(el.value for el in at.markdown)
     assert re.search(r"(?<!\\)\$\d", joined) is None, "an unescaped dollar amount reached st.markdown (renders as LaTeX)"
     assert "\\$" in joined
+
+
+def test_app_renders_fail_pills(tmp_path, monkeypatch):
+    report, bars_file = _write_losing_sample(tmp_path)
+    monkeypatch.setenv("SR_SAMPLE_REPORT", str(report))
+    monkeypatch.setenv("SR_SAMPLE_BARS", str(bars_file))
+    at = AppTest.from_file(APP, default_timeout=180)
+    at.session_state["sample"] = True
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+    joined = "\n".join(el.value for el in at.markdown)
+    assert "FAIL" in joined
+    assert "Gates passed: 0 of 2" in joined
 
 
 def test_app_renders_demo():

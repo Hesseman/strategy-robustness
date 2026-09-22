@@ -17,6 +17,17 @@ def _battery(planted_edge, n=80, **kw):
     return run_battery(rep, load_bars(bars_to_ts_text(bars)), n_perm=500, seed=0, **kw)
 
 
+def _losing_trades(bars, n, seed):
+    """make_trades' planted_edge trades with direction inverted, so the timing
+    that beat random entry now loses to it - gross/net P&L recomputed to match.
+    Point value fixed at 2.0 (MNQ), matching make_trades' own default."""
+    t = make_trades(bars, n=n, seed=seed, planted_edge=True)
+    t["direction"] = -t["direction"]
+    t["gross_pnl"] = (t.direction * (t.exit_price - t.entry_price) * 2.0 * t.contracts).round(2)
+    t["net_pnl"] = (t.gross_pnl - 2 * (t.comm_side + t.slip_side)).round(2)
+    return t
+
+
 def test_planted_edge_passes_t8a_gate():
     r = _battery(planted_edge=True)
     assert r.verdicts["t8a"] == "pass" and r.baseline.p_value < GATE_ALPHA
@@ -74,6 +85,17 @@ def test_to_json_handles_nat_and_meta_timestamps():
     d = json.loads(to_json(_battery(planted_edge=True, n=40)))
     for key in ("bars_start", "bars_end", "first_entry", "last_exit"):
         assert isinstance(d["meta"][key], str)
+
+
+def test_inverted_edge_fails_both_gates():
+    bars = make_bars(n=4000, seed=30)
+    trades = _losing_trades(bars, n=80, seed=31)
+    rep = parse_report(trades_to_report_text(trades))
+    r = run_battery(rep, load_bars(bars_to_ts_text(bars)), n_perm=500, seed=0)
+    assert r.verdicts["t8a"] == "fail"
+    assert r.verdicts["t7"] == "fail"
+    assert r.gates_passed == 0
+    assert r.baseline.p_value > 0.5
 
 
 def test_jsonable_writes_infinite_values_as_null():
