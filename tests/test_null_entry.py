@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from robustness.null_entry import random_entry_test
 from robustness.returns import matched_drift_baseline, pct_returns
@@ -40,3 +41,13 @@ def test_deterministic_with_seed():
     a = random_entry_test(open_, t.hold_bars.to_numpy(), t.direction.to_numpy(), pct_returns(t), n_perm=300, seed=5)
     b = random_entry_test(open_, t.hold_bars.to_numpy(), t.direction.to_numpy(), pct_returns(t), n_perm=300, seed=5)
     assert np.array_equal(a.null, b.null)
+
+
+def test_hold_outside_series_raises():
+    open_ = np.linspace(100.0, 110.0, 50)
+    with pytest.raises(ValueError, match="every hold must be"):
+        random_entry_test(open_, np.array([0]), np.array([1]), np.array([0.01]), n_perm=10)
+    with pytest.raises(ValueError, match="every hold must be"):
+        random_entry_test(open_, np.array([50]), np.array([1]), np.array([0.01]), n_perm=10)
+    res = random_entry_test(open_, np.array([49]), np.array([1]), np.array([0.01]), n_perm=10)  # boundary hold accepted
+    assert res.n_trades == 1 and res.n_perm == 10
