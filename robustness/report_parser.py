@@ -55,8 +55,13 @@ def parse_money(s: str) -> float:
     return -v if neg else v
 
 
+# TradeStation writes large % Profit cells unquoted with thousands separators
+# (e.g. 23,500.00%), which would add a column; strip those commas before splitting.
+_PCT_THOUSANDS = re.compile(r"(\d),(\d{3}(?:,\d{3})*)(\.\d+%)")
+
+
 def _split(line: str) -> list[str]:
-    cells = next(csv.reader([line]))
+    cells = next(csv.reader([_PCT_THOUSANDS.sub(r"\1\2\3", line)]))
     return cells + [""] * (_N_COLS - len(cells))
 
 

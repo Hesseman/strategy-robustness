@@ -77,3 +77,11 @@ def test_exit_type_mismatch_raises(mini_report_text):
     bad = mini_report_text.replace(",Buy to Cover,1/6/2025 11:30", ",Sell,1/6/2025 11:30")
     with pytest.raises(ReportFormatError, match="does not close"):
         parse_report(bad)
+
+
+def test_percent_profit_thousands_comma_does_not_shift_columns(mini_report_text):
+    shifted = mini_report_text.replace(",0.05%,$36.00,", ",23,500.00%,$36.00,")
+    assert "23,500.00%" in shifted
+    t = parse_report(shifted).trades
+    assert t.runup_usd.tolist() == [36.00, 16.00]
+    assert t.comm_side.tolist() == [2.20, 2.20] and t.slip_side.tolist() == [0.50, 0.50]
