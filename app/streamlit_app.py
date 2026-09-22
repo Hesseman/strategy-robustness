@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import streamlit as st
+import plotly.graph_objects as go
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -22,6 +23,9 @@ PILL = {"pass": ("#2e8b57", "✓ PASS"), "fail": ("#c0392b", "✗ FAIL"), "score
 
 
 def pill(verdict: str, extra: str = "") -> str:
+    """Accepts a verdict key (pass | fail | score | reference | insufficient) and optional
+    extra text; returns the HTML span for the coloured pill. Guarantees the five known
+    keys render; any other key raises KeyError."""
     color, label = PILL[verdict]
     return (f'<span style="background:{color};color:white;padding:4px 12px;border-radius:14px;'
             f'font-weight:600;font-size:0.9rem">{label}{(" " + extra) if extra else ""}</span>')
@@ -58,7 +62,11 @@ def _battery(report_bytes: bytes, bars_bytes: bytes, n_perm: int, seed: int, mar
     return run_battery(_parse(report_bytes), _bars(bars_bytes), n_perm=n_perm, seed=seed, today_margin_usd=margin)
 
 
-def card(key: str, verdict: str, result_lines: list[str], fig, fig2=None, extra: str = ""):
+def card(key: str, verdict: str, result_lines: list[str], fig: go.Figure,
+         fig2: go.Figure | None = None, extra: str = "") -> None:
+    """Accepts a key from CARDS, its verdict, the result bullet lines and one or two
+    plotly figures; renders one bordered card (copy and pill left, charts right).
+    Returns nothing; guarantees the card order and layout are identical for every test."""
     c = CARDS[key]
     with st.container(border=True):
         st.markdown(f"### {c['title']}")
