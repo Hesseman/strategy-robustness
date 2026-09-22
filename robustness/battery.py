@@ -59,8 +59,8 @@ def run_battery(report: ParsedReport, bars: pd.DataFrame, *, n_perm: int = 1000,
     Accepts: report - a ParsedReport (from parse_report); bars - a bar DataFrame (from
     load_bars); n_perm - permutation count for the T8a null; seed - RNG seed for T8a
     (same seed -> same null draw and p-value); today_margin_usd - optional current
-    exchange margin in USD, when given the margin card is computed against the T-dd
-    capital, else margin is None; min_trades - the trade-count floor below which the
+    exchange margin in USD; today_margin_usd=None omits the margin line; any float,
+    including 0.0, computes it; min_trades - the trade-count floor below which the
     t8a/t7 gate verdicts read 'insufficient' (every test still runs and is reported).
 
     Returns: a BatteryResult carrying the run's meta (symbol/root/interval/trade counts/
@@ -95,7 +95,7 @@ def run_battery(report: ParsedReport, bars: pd.DataFrame, *, n_perm: int = 1000,
         cost, source = ref, "multiwalk"
     t7 = cost_stress(usd, baseline_usd, cost, source, ts_cost_rt_usd=ts_cost)
     dd = drawdown_analysis(usd, pd.DatetimeIndex(t.entry_time), pd.DatetimeIndex(t.exit_time))
-    margin = margin_check(dd.capital, today_margin_usd) if today_margin_usd else None
+    margin = margin_check(dd.capital, today_margin_usd) if today_margin_usd is not None else None
 
     enough = len(t) >= min_trades
     verdicts = {"baseline": "reference",
@@ -117,6 +117,8 @@ def run_battery(report: ParsedReport, bars: pd.DataFrame, *, n_perm: int = 1000,
 
 
 def _jsonable(o):
+    if o is pd.NaT:
+        return None
     if dataclasses.is_dataclass(o) and not isinstance(o, type):
         return {f.name: _jsonable(getattr(o, f.name)) for f in dataclasses.fields(o)}
     if isinstance(o, dict):

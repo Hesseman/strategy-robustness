@@ -65,3 +65,17 @@ def test_to_json_roundtrips():
     assert d["baseline"]["n_perm"] == 500 and len(d["baseline"]["null"]) == 500
     assert isinstance(d["dd"]["worst"]["peak_time"], str)
     assert d["t3"]["yearly"][0].keys() >= {"year", "usd", "n"}
+
+
+def test_to_json_handles_nat_and_meta_timestamps():
+    from robustness.battery import _jsonable
+    assert _jsonable({"t": pd.NaT, "x": float("nan")}) == {"t": None, "x": None}
+    d = json.loads(to_json(_battery(planted_edge=True, n=40)))
+    for key in ("bars_start", "bars_end", "first_entry", "last_exit"):
+        assert isinstance(d["meta"][key], str)
+
+
+def test_zero_margin_is_a_value_not_absence():
+    r = _battery(planted_edge=False, n=40, today_margin_usd=0.0)
+    assert r.margin is not None
+    assert r.margin["today_margin_usd"] == 0.0 and r.margin["margin_to_equity"] == 0.0
