@@ -1,0 +1,8 @@
+services:
+  app:
+    build: .
+    image: strategy-robustness
+    container_name: strategy-robustness
+    ports:
+      - "8501:8501"
+    restart: unless-stopped

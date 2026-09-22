@@ -2,7 +2,8 @@
 
 Upload a TradeStation **Strategy Performance Report** (saved as CSV) and the **bar data** the
 strategy ran on (Data Window export, same symbol and interval). The app joins the trade list
-to the bars and runs the trade-list subset of our robustness battery:
+to the bars and runs the trade-list subset of our robustness battery. No files? Click **Try
+the demo** in the sidebar to run the same battery against a synthetic strategy instead.
 
 | Card | Question | Verdict type |
 |---|---|---|
@@ -18,10 +19,18 @@ with these tests", not "it works".
 
 ## Run (Docker)
 
+    docker compose up --build
+
+Open http://localhost:8501. Nothing is stored; uploads live in memory for the session.
+
+Or without compose:
+
     docker build -t strategy-robustness .
     docker run --rm -p 8501:8501 strategy-robustness
 
-Open http://localhost:8501. Nothing is stored; uploads live in memory for the session.
+Run the test suite inside the built image (no browser needed):
+
+    docker run --rm strategy-robustness python -m pytest -q
 
 ## Develop
 
