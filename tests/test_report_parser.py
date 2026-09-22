@@ -80,8 +80,14 @@ def test_exit_type_mismatch_raises(mini_report_text):
 
 
 def test_percent_profit_thousands_comma_does_not_shift_columns(mini_report_text):
-    shifted = mini_report_text.replace(",0.05%,$36.00,", ",23,500.00%,$36.00,")
-    assert "23,500.00%" in shifted
-    t = parse_report(shifted).trades
-    assert t.runup_usd.tolist() == [36.00, 16.00]
-    assert t.comm_side.tolist() == [2.20, 2.20] and t.slip_side.tolist() == [0.50, 0.50]
+    cases = {
+        "23,500.00%": [36.00, 16.00],        # thousands comma inside the cell: stripped
+        "500.00%": [36.00, 16.00],           # 3-digit percent after a digit-terminated cell: delimiter kept
+        "1,234,567.00%": [36.00, 16.00],     # two thousands groups
+    }
+    for pct, runups in cases.items():
+        text = mini_report_text.replace(",0.05%,$36.00,", f",{pct},$36.00,")
+        assert pct in text
+        t = parse_report(text).trades
+        assert t.runup_usd.tolist() == runups, pct
+        assert t.comm_side.tolist() == [2.20, 2.20] and t.slip_side.tolist() == [0.50, 0.50], pct
