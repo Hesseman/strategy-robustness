@@ -114,10 +114,14 @@ def _parse_trades(lines: list[str], header_i: int, warnings: list[str]) -> pd.Da
             raise ReportFormatError(f"trade {e[0]}: entry Type {e[1]!r} is not Buy / Sell Short")
         if x[1] != _EXIT_FOR[direction]:
             raise ReportFormatError(f"trade {e[0]}: exit Type {x[1]!r} does not close a {e[1]}")
+        try:
+            contracts = int(float(e[6]))
+        except ValueError:
+            raise ReportFormatError(f"trade {e[0]}: contracts cell {e[6]!r} is not a number") from None
         recs.append({
             "trade_id": int(e[0]), "direction": direction,
             "entry_time": _parse_dt(e[2], warnings), "entry_signal": e[3].strip(),
-            "entry_price": parse_money(e[4]), "contracts": int(float(e[6])),
+            "entry_price": parse_money(e[4]), "contracts": contracts,
             "net_pnl": parse_money(e[7]), "runup_usd": parse_money(e[9]),
             "comm_side": parse_money(e[12]), "slip_side": parse_money(e[13]),
             "exit_time": _parse_dt(x[2], warnings), "exit_signal": x[3].strip(),

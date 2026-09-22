@@ -43,3 +43,17 @@ def test_duplicate_timestamp_raises():
             "01/02/2025,09:00,1,2,0.5,1.5,1,1\n01/02/2025,09:00,1,2,0.5,1.5,1,1\n")
     with pytest.raises(BarsFormatError, match="duplicate"):
         load_bars(text)
+
+
+def test_iso_date_raises_readable_error():
+    text = ("Date,Time,Open,High,Low,Close\n"
+            "2025-01-06,09:00,1,2,0.5,1.5\n2025-01-06,09:30,1,2,0.5,1.5\n")
+    with pytest.raises(BarsFormatError, match="MM/DD/YYYY"):
+        load_bars(text)
+
+
+def test_non_numeric_open_raises_readable_error():
+    text = ("Date,Time,Open,High,Low,Close\n"
+            "01/06/2025,09:00,bad,2,0.5,1.5\n01/06/2025,09:30,1,2,0.5,1.5\n")
+    with pytest.raises(BarsFormatError, match="must be numbers"):
+        load_bars(text)

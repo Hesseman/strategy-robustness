@@ -79,6 +79,14 @@ def test_exit_type_mismatch_raises(mini_report_text):
         parse_report(bad)
 
 
+def test_blank_contracts_cell_raises_readable_error(mini_report_text):
+    bad = mini_report_text.replace(
+        "1,Sell Short,1/6/2025 09:00,ShortEntry A,$20000.00,$0.00,3,$54.60,",
+        "1,Sell Short,1/6/2025 09:00,ShortEntry A,$20000.00,$0.00,,$54.60,")
+    with pytest.raises(ReportFormatError, match="contracts cell"):
+        parse_report(bad)
+
+
 def test_percent_profit_thousands_comma_does_not_shift_columns(mini_report_text):
     cases = {
         "23,500.00%": [36.00, 16.00],        # thousands comma inside the cell: stripped

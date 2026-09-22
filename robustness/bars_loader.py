@@ -22,8 +22,9 @@ class BarsFormatError(ValueError):
 def load_bars(text: str) -> pd.DataFrame:
     """Return bars with a tz-naive DatetimeIndex named 'ts' (sorted, unique) and float
     columns open/high/low/close/volume (volume = Up+Down, else Vol, else NaN).
-    Raises BarsFormatError on missing columns, duplicate timestamps, non-positive prices,
-    or fewer than two bars."""
+    Raises BarsFormatError on missing columns, an unparseable Date/Time or
+    Open/High/Low/Close cell (row named, 1-based counting a header row), duplicate
+    timestamps, non-positive prices, or fewer than two bars."""
     df = pd.read_csv(io.StringIO(text), skipinitialspace=True)
     df.columns = [str(c).strip().strip('"') for c in df.columns]
     missing = [c for c in REQUIRED if c not in df.columns]
@@ -37,10 +38,24 @@ def load_bars(text: str) -> pd.DataFrame:
     else:
         volume = pd.Series(float("nan"), index=df.index)
     stamp = df["Date"].astype(str).str.strip() + " " + df["Time"].astype(str).str.strip()
-    ts = pd.to_datetime(stamp, format="%m/%d/%Y %H:%M")
-    out = pd.DataFrame({"open": df["Open"].astype(float).to_numpy(), "high": df["High"].astype(float).to_numpy(),
-                        "low": df["Low"].astype(float).to_numpy(), "close": df["Close"].astype(float).to_numpy(),
-                        "volume": volume.to_numpy()},
+    try:
+        ts = pd.to_datetime(stamp, format="%m/%d/%Y %H:%M")
+    except (ValueError, TypeError):
+        bad = pd.to_datetime(stamp, format="%m/%d/%Y %H:%M", errors="coerce").isna()
+        i = int(bad.to_numpy().argmax())
+        raise BarsFormatError(f"row {i + 2}: Date/Time {stamp.iloc[i]!r} is not MM/DD/YYYY HH:MM") from None
+    try:
+        open_ = df["Open"].astype(float).to_numpy(); high_ = df["High"].astype(float).to_numpy()
+        low_ = df["Low"].astype(float).to_numpy(); close_ = df["Close"].astype(float).to_numpy()
+    except (ValueError, TypeError):
+        for col in ("Open", "High", "Low", "Close"):
+            bad = pd.to_numeric(df[col], errors="coerce").isna() & df[col].notna()
+            if bad.any():
+                i = int(bad.to_numpy().argmax())
+                raise BarsFormatError(f"Open/High/Low/Close must be numbers; first bad value "
+                                      f"{df[col].iloc[i]!r} in row {i + 2}") from None
+        raise
+    out = pd.DataFrame({"open": open_, "high": high_, "low": low_, "close": close_, "volume": volume.to_numpy()},
                        index=pd.DatetimeIndex(ts.to_numpy(), name="ts")).sort_index()
     if not out.index.is_unique:
         dup = [str(t) for t in out.index[out.index.duplicated()][:3]]

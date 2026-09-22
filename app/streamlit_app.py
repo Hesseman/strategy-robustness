@@ -147,6 +147,11 @@ except ValidationFailed as e:
     st.error("The report and the bars do not join - fix the inputs before any test can run.")
     st.table([{"check": c.name, "ok": "✓" if c.passed else "✗", "detail": c.detail} for c in e.checks])
     st.stop()
+except Exception as e:
+    st.error("Could not process these files - check that the report is the CSV Strategy Performance "
+             "Report and the bars are a Data Window export of the same symbol and interval. Details: "
+             + f"{type(e).__name__}: {e}")
+    st.stop()
 
 m = result.meta
 st.subheader(f"{m['symbol']} · {m['interval']} · {m['n_trades']} trades ({m['n_long']} long / {m['n_short']} short) "
