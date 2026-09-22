@@ -1,6 +1,7 @@
 """Strategy Robustness App - Streamlit UI. Uploads -> parse -> validate -> battery -> cards."""
 from __future__ import annotations
 
+import math
 import os
 import sys
 from pathlib import Path
@@ -76,6 +77,17 @@ def demo_files() -> tuple[bytes, bytes]:
 @st.cache_data(show_spinner="Running the battery...")
 def _battery(report_bytes: bytes, bars_bytes: bytes, n_perm: int, seed: int, margin: float | None):
     return run_battery(_parse(report_bytes), _bars(bars_bytes), n_perm=n_perm, seed=seed, today_margin_usd=margin)
+
+
+def _p_text(k_ge: int, p: float) -> str:
+    """T8a p for display. p = (k+1)/(n+1) is a bound when no random set matched (k = 0), so
+    it is shown as 'p ≤' rounded up; otherwise 'p =' to 3 decimals, 4 when 3 would hide
+    which side of the 0.05 gate it is on."""
+    if k_ge == 0:
+        return f"p ≤ {math.ceil(p * 1000) / 1000:.3f}"
+    if p < 0.001 or (round(p, 3) >= 0.05 > p):
+        return f"p = {p:.4f}"
+    return f"p = {p:.3f}"
 
 
 def card(key: str, verdict: str, result_lines: list[str], fig: go.Figure,
@@ -184,7 +196,7 @@ card("baseline", result.verdicts["baseline"],
      charts.fig_baseline(b))
 card("t8a", result.verdicts["t8a"],
      [f"strategy **{b.observed_mean*100:+.3f}%** vs random-set mean {b.null_mean*100:+.3f}% (sd {b.null_std*100:.3f}%) → z = {b.z:.1f}",
-      f"random sets at least as good: **{b.k_ge} of {b.n_perm}** → p = {b.p_value:.3f} (gate < 0.05)",
+      f"**{b.k_ge} of {b.n_perm}** random sets matched or beat the strategy → {_p_text(b.k_ge, b.p_value)} (gate < 0.05)",
       f"best random set {b.null.max()*100:+.3f}%"],
      charts.fig_null_hist(b))
 crisis = t3.crisis

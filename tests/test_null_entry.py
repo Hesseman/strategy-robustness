@@ -27,7 +27,15 @@ def test_random_strategy_is_not_significant():
     open_, t = _setup(planted_edge=False)
     res = random_entry_test(open_, t.hold_bars.to_numpy(), t.direction.to_numpy(), pct_returns(t), n_perm=1000, seed=0)
     assert abs(res.z) < 3.5
-    assert res.p_value == res.k_ge / res.n_perm
+    assert res.p_value == (res.k_ge + 1) / (res.n_perm + 1)
+
+
+def test_p_value_counts_the_observed_as_a_draw_so_it_is_never_zero():
+    open_, t = _setup(planted_edge=False)
+    unbeatable = np.full(len(t), 1.0)  # +100% per trade: no random set can match it
+    res = random_entry_test(open_, t.hold_bars.to_numpy(), t.direction.to_numpy(), unbeatable, n_perm=100, seed=0)
+    assert res.k_ge == 0
+    assert res.p_value == 1 / 101 and res.p_value > 0
 
 
 def test_planted_edge_is_significant():

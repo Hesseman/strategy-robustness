@@ -51,6 +51,8 @@ def test_app_renders_full_battery_on_sample(tmp_path, monkeypatch):
     text = " ".join(el.value for el in at.markdown)
     assert "Gates passed" in text
     assert "REFERENCE" in text and ("PASS" in text or "FAIL" in text)
+    assert "random sets matched or beat the strategy" in text
+    assert "p = 0.000" not in text, "T8a p must never read 0.000 ((k+1)/(n+1) with 'p ≤' when k = 0)"
     import re
     joined = "\n".join(el.value for el in at.markdown)
     assert re.search(r"(?<!\\)\$\d", joined) is None, "an unescaped dollar amount reached st.markdown (renders as LaTeX)"

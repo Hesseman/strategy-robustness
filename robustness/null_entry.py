@@ -2,7 +2,9 @@
 
 One null draw = for every real trade i, a uniformly random entry bar j_i, held for that
 trade's own hold H_i in its own direction d_i, return d_i x (open[j_i+H_i]/open[j_i] - 1);
-the draw's statistic is the mean over trades. p = share of draws >= the observed mean.
+the draw's statistic is the mean over trades. p = (k + 1) / (n_perm + 1) with k = draws
+>= the observed mean: the observed statistic counts as one more draw from the null
+(Phipson & Smyth 2010), so p is never exactly 0 and its floor is 1 / (n_perm + 1).
 The observed mean uses the actual fills. Ported from signal_lab's T8a (fixed horizon) to
 variable per-trade holds; the deterministic baseline is the null's expectation.
 """
@@ -65,4 +67,4 @@ def random_entry_test(open_: np.ndarray, holds: np.ndarray, directions: np.ndarr
         observed_win_rate=float((observed > 0).mean()), baseline_win_rate=float(np.nanmean(base.win_rate)),
         null=null, null_mean=null_mean, null_std=null_std,
         z=(obs_mean - null_mean) / null_std if null_std > 0 else float("nan"),
-        k_ge=k, n_perm=n_perm, p_value=k / n_perm)
+        k_ge=k, n_perm=n_perm, p_value=(k + 1) / (n_perm + 1))

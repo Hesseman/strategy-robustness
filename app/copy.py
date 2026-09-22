@@ -10,7 +10,7 @@ CARDS = {
         "title": "T8a - Random entries: is it timing, or just being in the market?",
         "tagline": "Luck - build the distribution of what random timing achieves and see where the strategy lands",
         "catches": "N trades can beat the drift by chance. We need to know how much N random entries vary, and whether the strategy's mean is inside that range.",
-        "how": "Draw one random entry bar per trade, hold it for that trade's own number of bars in its own direction, take the mean; repeat 1000 times. p = share of random sets at least as good as the strategy. Gate: p < 0.05. It takes the strategy as given - it does not know how many strategies were tried.",
+        "how": "Draw one random entry bar per trade, hold it for that trade's own number of bars in its own direction, take the mean; repeat 1000 times. p = (random sets at least as good + 1) / (sets + 1) - the strategy's own result counts as one more draw, so p never reads exactly 0: 0 of 1000 shows as p ≤ 0.001. Gate: p < 0.05. It takes the strategy as given - it does not know how many strategies were tried.",
     },
     "t3": {
         "title": "T3 - Does it work in every era, and in a crisis?",
