@@ -1,0 +1,15 @@
+name: Strategy Robustness App
+one_liner: Upload a TradeStation strategy report + bars, get the robustness battery back — runs locally in Docker
+build_hours:
+months_to_first_version:
+run_hours_month:
+capital_until_self_funding:
+revenue: []
+gross_margin_pct:
+fixed_costs_year:
+exit_value:
+months_to_first_profit:
+implementability:
+excitement:
+commitment:
+confidence:

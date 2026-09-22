@@ -1,0 +1,60 @@
+
+
+Performance Summary
+
+,,,,
+TradeStation Performance Summary,,,,
+,,,,
+,All Trades,Long Trades,Short Trades,
+Total Net Profit,$24.70,($29.90),$54.60,
+Gross Profit,$60.00,$0.00,$60.00,
+Gross Loss,($24.50),($24.50),$0.00,
+Profit Factor,2.45,n/a,n/a,
+,,,,
+Total Number of Trades,2,1,1,
+Percent Profitable,50.00%,0.00%,100.00%,
+,,,,
+Avg. Bars in Total Trades,6.50,7.00,6.00,
+,,,,
+Max. Drawdown (Trade Close to Trade Close),,,,
+Value,($29.90),($29.90),$0.00,
+Date,02/26/26 19:00,,,
+Trading Period,2 days,,,
+
+
+TradeStation Trades List
+
+#,Type,Date/Time,Signal,Price,Roll Over Pips,Shares/Ctrts - Profit/Loss,Net Profit - Cum Net Profit,% Profit,Run-up/Drawdown,Efficiency,Total Eff.,Comm.,Slippage
+
+1,Sell Short,1/6/2025 09:00,ShortEntry A,$20000.00,$0.00,3,$54.60,0.05%,$36.00,50.00%,,$2.20,$0.50
+,Buy to Cover,1/6/2025 11:30,CoverExit B,$19990.00,,$60.00,$54.60,,($12.00),70.00%,20.00%,$2.20,$0.50
+2,Buy,1/7/2025 10:00,LongEntry C,$20010.50,$0.00,1,($29.90),-0.06%,$16.00,40.00%,,$2.20,$0.50
+,Sell,1/7/2025 13:00,StopExit D,$19998.25,,($24.50),$24.70,,($28.00),30.00%,-10.00%,$2.20,$0.50
+
+Trade Analysis
+
+,,,,
+TradeStation Trade Analysis,,,,
+Total Number of Trades,2,1,1,
+
+Settings
+
+,,,
+TradeStation Chart Settings,,,
+Symbol,@MNQ,,
+Description,Micro E-mini Nasdaq-100 Continuous Contract [Mar25],,
+Interval,30 min.,,
+Start Date/Time,1/6/2025 8:30:00 AM,,
+End Date/Time,1/7/2025 1:30:00 PM,,
+,,,
+TradeStation Strategies Applied,,,
+Demo_Strategy(On),,,
+,,,
+TradeStation Strategy Settings,,,
+Demo_Strategy - Length,20,,
+Demo_Strategy - UseStop,true,,
+Trade Size,,,
+Fixed Shares/Contracts:,1,,
+,,,
+TradeStation Report Settings,,,
+Display Periods,40,,
