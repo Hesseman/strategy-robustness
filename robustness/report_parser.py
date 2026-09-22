@@ -105,6 +105,9 @@ def _parse_trades(lines: list[str], header_i: int, warnings: list[str]) -> pd.Da
         while j < len(rows) and rows[j][0] == "":
             exits.append(rows[j])
             j += 1
+        if len(exits) == 0:
+            raise ReportFormatError(f"trade {e[0]} has no exit row - is the position still open on the "
+                                    "report date? Export the report again after it closes, or remove the open trade")
         if len(exits) != 1:
             raise ReportFormatError(f"trade {e[0]} has {len(exits)} exit rows; v1 supports exactly one "
                                     "(scaling out / pyramiding legs are not supported)")

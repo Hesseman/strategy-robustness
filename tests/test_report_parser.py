@@ -79,6 +79,14 @@ def test_exit_type_mismatch_raises(mini_report_text):
         parse_report(bad)
 
 
+def test_open_position_at_end_says_no_exit_row(mini_report_text):
+    lines = mini_report_text.split("\r\n")
+    i = next(k for k, l in enumerate(lines) if l.startswith(",Sell,1/7/2025 13:00"))
+    del lines[i]
+    with pytest.raises(ReportFormatError, match="trade 2 has no exit row"):
+        parse_report("\r\n".join(lines))
+
+
 def test_blank_contracts_cell_raises_readable_error(mini_report_text):
     bad = mini_report_text.replace(
         "1,Sell Short,1/6/2025 09:00,ShortEntry A,$20000.00,$0.00,3,$54.60,",
