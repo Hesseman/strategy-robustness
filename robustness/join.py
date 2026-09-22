@@ -123,12 +123,15 @@ def join_trades_to_bars(trades: pd.DataFrame, bars: pd.DataFrame, summary: dict 
     pts = t.direction.to_numpy() * (xp - ep) * t.contracts.to_numpy()
     nz = pts != 0
     if nz.any():
-        pv = t.gross_pnl.to_numpy()[nz] / pts[nz]
-        pv_med = float(np.round(np.median(pv), 4))
-        spread = float(np.max(np.abs(pv - pv_med)))
-        checks.append(Check("point_value_constant", bool(spread < 0.005),
-                            f"gross P&L / (direction x price change x contracts) = {pv_med} per point"
-                            + ("" if spread < 0.005 else f", but varies by up to {spread:.4f} across trades")))
+        g, p = t.gross_pnl.to_numpy()[nz], pts[nz]
+        pv = float(np.sum(g * p) / np.sum(p * p))          # least-squares point value over the non-zero trades
+        pv_med = round(pv, 4)
+        res = float(np.max(np.abs(g - np.round(pv_med * p, 2))))
+        checks.append(Check("point_value_constant", bool(res <= _MONEY_TOL),
+                            f"gross P&L reproduced from prices x contracts with point value {pv_med} per point "
+                            f"(max residual ${res:.2f})" if res <= _MONEY_TOL else
+                            f"point value {pv_med} per point does not reproduce the report's gross P&L "
+                            f"(max residual ${res:.2f}) - wrong point value or a parser column shift"))
     else:
         pv_med = float("nan")
         checks.append(Check("point_value_constant", False, "no trade with a non-zero price change; cannot infer point value"))

@@ -12,6 +12,25 @@ def _checks(res):
     return {c.name: c for c in res.checks}
 
 
+def _ty_like_bars(n_bars: int = 400, seed: int = 30, p0: float = 110.0) -> pd.DataFrame:
+    """Synthetic bars with prices on exact 1/64 ticks (TY/FV/TU-style quoting).
+    Built directly rather than through make_bars + bars_to_ts_text, whose $.2f
+    price-cell formatting would round away the sub-cent tick fractions this
+    fixture needs - the point-value check reads entry/exit prices straight off
+    the trades frame, so precision there is what the test is exercising."""
+    rng = np.random.default_rng(seed)
+    rets = rng.normal(0.0, 0.001, n_bars)
+    close = p0 * np.cumprod(1.0 + rets)
+    open_ = np.concatenate([[p0], close[:-1]])
+    open_64 = np.round(open_ * 64) / 64
+    close_64 = np.round(close * 64) / 64
+    hi = np.maximum(open_64, close_64) + 2 / 64
+    lo = np.minimum(open_64, close_64) - 2 / 64
+    idx = pd.date_range("2024-01-02 08:30", periods=n_bars, freq="30min", name="ts")
+    return pd.DataFrame({"open": open_64, "high": hi, "low": lo, "close": close_64,
+                         "volume": np.full(n_bars, 100.0)}, index=idx)
+
+
 def test_mini_join(mini_report_text, mini_bars_text):
     rep = parse_report(mini_report_text)
     bars = load_bars(mini_bars_text)
@@ -72,6 +91,18 @@ def test_synthetic_join_passes_all_error_checks():
     assert res.ok and all(c.passed for c in res.checks)
     assert res.trades.entry_idx.tolist() == trades.entry_idx.tolist()
     assert res.trades.hold_bars.tolist() == (trades.exit_idx - trades.entry_idx).tolist()
+
+
+def test_point_value_check_judges_dollar_residual_not_pv_spread():
+    """TY/FV/TU-style instrument: 1/64 ticks x $1000/point. Cent-rounded gross P&L
+    makes the per-trade point-value estimate wobble in point-value units even
+    though it reproduces the report's dollar P&L almost exactly - the check must
+    judge the dollar residual, not the spread of pv_i = gross_pnl / points."""
+    bars = _ty_like_bars(seed=30)
+    trades = make_trades(bars, n=40, seed=31, point_value=1000.0)
+    res = join_trades_to_bars(trades, bars)
+    assert _checks(res)["point_value_constant"].passed
+    assert abs(res.point_value - 1000.0) < 0.01
 
 
 def test_empty_trades_never_raises(mini_report_text, mini_bars_text):
