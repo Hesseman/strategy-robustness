@@ -72,3 +72,11 @@ def test_synthetic_join_passes_all_error_checks():
     assert res.ok and all(c.passed for c in res.checks)
     assert res.trades.entry_idx.tolist() == trades.entry_idx.tolist()
     assert res.trades.hold_bars.tolist() == (trades.exit_idx - trades.entry_idx).tolist()
+
+
+def test_empty_trades_never_raises(mini_report_text, mini_bars_text):
+    rep = parse_report(mini_report_text)
+    res = join_trades_to_bars(rep.trades.iloc[0:0], load_bars(mini_bars_text))
+    assert not res.ok
+    assert res.checks[0].name == "has_trades" and not res.checks[0].passed and res.checks[0].severity == "error"
+    assert list(res.trades.columns[-3:]) == ["entry_idx", "exit_idx", "hold_bars"] and len(res.trades) == 0

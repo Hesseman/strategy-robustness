@@ -64,12 +64,19 @@ def join_trades_to_bars(trades: pd.DataFrame, bars: pd.DataFrame, summary: dict 
                         settings: dict | None = None, min_trades: int = 30) -> JoinResult:
     """Locate every trade's entry and exit bar and run the validation checks. Returns a
     JoinResult; when timestamps are missing the index columns hold -1 and .ok is False.
-    Never raises on bad data - the checks carry the diagnosis."""
+    Never raises on bad data - the checks carry the diagnosis; an empty trade list returns
+    a single failed `has_trades` check."""
     summary = summary or {}
     settings = settings or {}
     t = trades.copy()
     checks: list[Check] = []
     n = len(bars)
+
+    if len(t) == 0:
+        for col in ("entry_idx", "exit_idx", "hold_bars"):
+            t[col] = np.array([], dtype=int)
+        return JoinResult(t, float("nan"), "unknown",
+                          [Check("has_trades", False, "the report has no trades")])
 
     date_only = bool((t.entry_time.dt.normalize() == t.entry_time).all()
                      and (t.exit_time.dt.normalize() == t.exit_time).all()
