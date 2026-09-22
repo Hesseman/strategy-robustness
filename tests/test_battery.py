@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -73,6 +74,12 @@ def test_to_json_handles_nat_and_meta_timestamps():
     d = json.loads(to_json(_battery(planted_edge=True, n=40)))
     for key in ("bars_start", "bars_end", "first_entry", "last_exit"):
         assert isinstance(d["meta"][key], str)
+
+
+def test_jsonable_writes_infinite_values_as_null():
+    from robustness.battery import _jsonable
+    assert _jsonable({"a": float("inf"), "b": np.float64("-inf"), "c": float("nan")}) == {"a": None, "b": None, "c": None}
+    json.dumps(_jsonable(_battery(planted_edge=True, n=40)), allow_nan=False)
 
 
 def test_zero_margin_is_a_value_not_absence():

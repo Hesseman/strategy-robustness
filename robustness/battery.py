@@ -134,7 +134,7 @@ def _jsonable(o):
     if isinstance(o, (np.integer,)):
         return int(o)
     if isinstance(o, (np.floating, float)):
-        return None if (isinstance(o, float) or isinstance(o, np.floating)) and np.isnan(o) else float(o)
+        return None if not np.isfinite(o) else float(o)
     if isinstance(o, (np.bool_,)):
         return bool(o)
     return o
@@ -146,8 +146,9 @@ def to_json(result: BatteryResult) -> str:
     Accepts: a BatteryResult (as returned by run_battery).
     Returns: the whole result as an indented JSON string - nested dataclasses become
     objects (one key per field), dicts and DataFrames (as record lists) recurse the same
-    way, NumPy/pandas scalars become plain int/float/bool, NaN/NaT-shaped floats become
-    null, and Timestamps become ISO-8601 strings.
+    way, NumPy/pandas scalars become plain int/float/bool, non-finite floats (NaN, +-inf)
+    and NaT become null, and Timestamps become ISO-8601 strings.
     Guarantees: every top-level BatteryResult field is a key in the output; the result
-    round-trips through json.loads into plain dicts/lists/str/float/int/bool/None only."""
+    round-trips through json.loads into plain dicts/lists/str/float/int/bool/None only;
+    every float in the output is finite, so json.dumps(..., allow_nan=False) never raises."""
     return json.dumps(_jsonable(result), indent=1)
