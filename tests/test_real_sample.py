@@ -26,3 +26,16 @@ def test_real_sample_parses_and_joins():
     assert res.point_value == 2.0
     assert res.cost_basis == "per_trade"
     assert abs(res.trades.hold_bars.mean() + 1 - 41.22) < 0.01
+
+
+def test_real_sample_battery_runs():
+    from robustness.battery import run_battery
+    rep = parse_report(REPORT.read_text(encoding="utf-8-sig"))
+    bars = load_bars(BARS.read_text(encoding="utf-8-sig"))
+    r = run_battery(rep, bars, n_perm=500, seed=0, today_margin_usd=2500.0)
+    assert r.meta["n_trades"] == 418 and r.meta["root"] == "MNQ"
+    assert r.t7.cost_source == "multiwalk" and r.t7.cost_rt_usd == 5.74
+    assert r.t3.windows_total == 4 and r.dd.n_episodes > 5
+    assert r.verdicts["t8a"] in ("pass", "fail") and r.verdicts["t7"] in ("pass", "fail")
+    print("REAL SAMPLE:", r.verdicts, "p=", r.baseline.p_value, "lift=", r.baseline.lift,
+          "breakeven=", r.t7.breakeven_mult, "CDaR80=", r.dd.cdar80, "capital=", r.dd.capital, "annual%=", r.dd.annual_pct)
