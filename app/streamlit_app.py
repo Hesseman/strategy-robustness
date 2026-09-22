@@ -5,6 +5,7 @@ import os
 import sys
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 
@@ -36,6 +37,21 @@ def _ts_metric(summary: dict, key: str, kind: str) -> str:
     if not isinstance(v, (int, float)):
         return "-"
     return {"money": f"${v:,.2f}", "ratio": f"{v:.2f}", "pct": f"{v:.1f}%", "int": f"{int(v)}"}[kind]
+
+
+def _interval_label(value: str) -> str:
+    """Accepts the str(Timedelta) the battery stores (e.g. '0 days 00:30:00'); returns '30 min',
+    '1 h', '1 day' or the input unchanged when it does not parse. Guarantees no exception."""
+    try:
+        td = pd.Timedelta(value)
+    except Exception:
+        return value
+    minutes = int(td.total_seconds() // 60)
+    if minutes % 1440 == 0:
+        return f"{minutes // 1440} day" + ("s" if minutes // 1440 != 1 else "")
+    if minutes % 60 == 0:
+        return f"{minutes // 60} h"
+    return f"{minutes} min"
 
 
 @st.cache_data(show_spinner=False)
@@ -74,10 +90,10 @@ def card(key: str, verdict: str, result_lines: list[str], fig: go.Figure,
         left, right = st.columns([1, 1.2])
         with left:
             st.markdown(f"**What it catches.** {c['catches']}")
-            st.markdown(f"**How it works.** {c['how']}")
+            st.markdown(f"**How it works.** {c['how']}".replace("$", chr(92) + "$"))
             st.markdown("**Result**")
             for line in result_lines:
-                st.markdown(f"- {line}")
+                st.markdown(f"- {line.replace('$', chr(92) + '$')}")
             st.markdown(pill(verdict, extra), unsafe_allow_html=True)
         with right:
             st.plotly_chart(fig, width="stretch")
@@ -135,8 +151,9 @@ except ValidationFailed as e:
 m = result.meta
 st.subheader(f"{m['symbol']} · {m['interval']} · {m['n_trades']} trades ({m['n_long']} long / {m['n_short']} short) "
              f"· {m['first_entry']:%Y-%m-%d} → {m['last_exit']:%Y-%m-%d}")
-st.caption(f"strategies: {', '.join(m['strategies']) or '-'} · point value ${m['point_value']:g} (inferred) · "
-           f"{m['n_bars']:,} bars at {m['bar_interval']} · {m['n_perm']} random sets, seed {m['seed']}")
+st.caption((f"strategies: {', '.join(m['strategies']) or '-'} · point value ${m['point_value']:g} (inferred) · "
+           f"{m['n_bars']:,} bars at {_interval_label(m['bar_interval'])} · {m['n_perm']} random sets, seed {m['seed']}"
+           ).replace("$", chr(92) + "$"))
 for w in m["warnings"]:
     st.warning(w)
 

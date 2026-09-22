@@ -36,6 +36,10 @@ def test_app_renders_full_battery_on_sample(tmp_path, monkeypatch):
     text = " ".join(el.value for el in at.markdown)
     assert "Gates passed" in text
     assert "REFERENCE" in text and ("PASS" in text or "FAIL" in text)
+    import re
+    joined = "\n".join(el.value for el in at.markdown)
+    assert re.search(r"(?<!\\)\$\d", joined) is None, "an unescaped dollar amount reached st.markdown (renders as LaTeX)"
+    assert "\\$" in joined
 
 
 def test_app_renders_demo():
