@@ -28,8 +28,17 @@ class CostStressResult:
 def cost_stress(usd_pc: np.ndarray, baseline_usd: np.ndarray, cost_rt_usd: float, cost_source: str,
                 ts_cost_rt_usd: float | None = None,
                 mults: tuple[float, ...] = (0, 1, 2, 3, 5, 10, 20)) -> CostStressResult:
-    """usd_pc: gross $ per trade for 1 contract; baseline_usd: matched drift per trade in $;
-    cost_rt_usd: reference round trip per contract. Guarantees passes[i] == (net_lift_usd[i] > 0)."""
+    """Run the T7 cost stress test.
+
+    Accepts: usd_pc - gross $ per trade for ONE contract; baseline_usd - matched drift per
+    trade in $ (NaNs tolerated); cost_rt_usd - the reference round-trip cost per contract at
+    1x; cost_source - "multiwalk" (reference table) or "report" (fallback to the report's own
+    costs); ts_cost_rt_usd - the report's own round-trip cost, carried for display only;
+    mults - the cost multipliers to evaluate.
+    Returns: a CostStressResult with the net mean and net lift per multiplier, the pass flag
+    per multiplier, the breakeven multiplier, the 1x gate result and the 1x net profit factor.
+    Guarantees: passes[i] == (net_lift_usd[i] > 0); breakeven_mult is inf when the cost is 0;
+    net_pf_1x is inf when no trade loses after 1x cost."""
     usd_pc = np.asarray(usd_pc, dtype=float); baseline_usd = np.asarray(baseline_usd, dtype=float)
     g = float(usd_pc.mean()); b = float(np.nanmean(baseline_usd))
     net_mean = [g - k * cost_rt_usd for k in mults]
