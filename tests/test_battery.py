@@ -17,6 +17,18 @@ def _battery(planted_edge, n=80, **kw):
     return run_battery(rep, load_bars(bars_to_ts_text(bars)), n_perm=500, seed=0, **kw)
 
 
+def test_trailing_open_trade_is_dropped_and_reported_in_meta():
+    bars = make_bars(n=4000, seed=30)
+    trades = make_trades(bars, n=80, seed=31, planted_edge=True)
+    lines = trades_to_report_text(trades).splitlines()
+    last_exit = max(k for k, l in enumerate(lines) if l.startswith((",Sell,", ",Buy to Cover,")))
+    del lines[last_exit]
+    rep = parse_report("\r\n".join(lines))
+    r = run_battery(rep, load_bars(bars_to_ts_text(bars)), n_perm=200, seed=0)
+    assert r.meta["n_trades"] == 79 and len(rep.trades) == 79
+    assert any("79 of 80 trades used" in w for w in r.meta["warnings"])
+
+
 def _losing_trades(bars, n, seed):
     """make_trades' planted_edge trades with direction inverted, so the timing
     that beat random entry now loses to it - gross/net P&L recomputed to match.

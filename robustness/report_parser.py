@@ -94,6 +94,7 @@ def _parse_trades(lines: list[str], header_i: int, warnings: list[str]) -> pd.Da
             break
     if not rows:
         raise ReportFormatError("Trades List header found but no trade rows follow it")
+    n_entries = sum(1 for r in rows if r[0] != "")
     recs = []
     i = 0
     while i < len(rows):
@@ -106,8 +107,17 @@ def _parse_trades(lines: list[str], header_i: int, warnings: list[str]) -> pd.Da
             exits.append(rows[j])
             j += 1
         if len(exits) == 0:
-            raise ReportFormatError(f"trade {e[0]} has no exit row - is the position still open on the "
-                                    "report date? Export the report again after it closes, or remove the open trade")
+            # Only the last trade may be left open (still running on the report date):
+            # it is dropped with a warning (spec decision 13, amended 2026-09-22).
+            if j < len(rows):
+                raise ReportFormatError(f"trade {e[0]} has no exit row but later trades follow it - broken "
+                                        "export (only the last trade may be left open)")
+            if not recs:
+                raise ReportFormatError(f"the only trade ({e[0]}) is still open on the report date - nothing "
+                                        "to test; export the report again after it closes")
+            warnings.append(f"trade {e[0]} entered {e[2].strip()} has no exit row - still open on the report "
+                            f"date, dropped: {n_entries - 1} of {n_entries} trades used")
+            break
         if len(exits) != 1:
             raise ReportFormatError(f"trade {e[0]} has {len(exits)} exit rows; v1 supports exactly one "
                                     "(scaling out / pyramiding legs are not supported)")
@@ -188,8 +198,10 @@ def _parse_summary(lines: list[str], end: int) -> dict:
 
 def parse_report(text: str) -> ParsedReport:
     """Parse the whole report. Raises ReportFormatError when the Trades List header is
-    missing, a trade has != 1 exit row, entry/exit types do not pair, or a price/date does
-    not parse. Guarantees: trades sorted as listed, one row per trade, all prices finite."""
+    missing, a trade has > 1 exit rows, a trade other than the last has none, entry/exit
+    types do not pair, or a price/date does not parse. A last trade with no exit row (still
+    open on the report date) is dropped and named in ``warnings`` ("k of n trades used").
+    Guarantees: trades sorted as listed, one row per closed trade, all prices finite."""
     lines = [l.lstrip("\ufeff") for l in text.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
     try:
         hdr = next(i for i, l in enumerate(lines) if l.startswith(TRADES_HEADER_PREFIX))
