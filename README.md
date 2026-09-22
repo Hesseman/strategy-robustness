@@ -26,22 +26,105 @@ with these tests", not "it works".
 
 Both exports must come from the same workspace so their timestamps agree.
 
-## Run (Docker)
+## Run with Docker (step by step)
 
-Prerequisite: Docker Desktop.
+You need nothing installed except Docker Desktop. No Python, no packages.
+
+### 1. Install and start Docker Desktop
+
+- Download it from https://www.docker.com/products/docker-desktop/ and install. On Windows
+  accept the default WSL 2 backend and reboot if asked.
+- Start Docker Desktop and wait until the whale icon in the tray stops animating and the
+  bottom-left of the window says **Engine running**. Every `docker` command below fails with
+  "cannot connect to the Docker daemon" until it does.
+
+### 2. Get the code
+
+Open a terminal (PowerShell, Windows Terminal, or Git Bash) and run:
+
+    git clone https://github.com/Hesseman/strategy-robustness.git
+    cd strategy-robustness
+
+No Git? On the GitHub page click **Code → Download ZIP**, unzip it, and `cd` into the folder.
+
+### 3. Build the image and start the app
 
     docker compose up --build
 
-Open http://localhost:8501. Nothing is stored; uploads live in memory for the session.
+The first run downloads the Python base image and installs the packages (a few minutes,
+about 900 MB). Later runs reuse that work and start in seconds. The app is ready when the log
+shows:
 
-Or without compose:
+    You can now view your Streamlit app in your browser.
+    Local URL: http://localhost:8501
+    Network URL: http://172.17.0.3:8501
+    External URL: http://...:8501
+
+Use the **Local URL**. The Network and External URLs are the container's own view and do not
+work from your browser. Leave this terminal open: the app runs as long as the command does. To run it in the background instead, add `-d`
+(`docker compose up --build -d`) and stop it later with `docker compose down`.
+
+### 4. Open the app
+
+Go to **http://localhost:8501** in your browser. Upload the two TradeStation exports, or click
+**Try the demo** in the sidebar. Nothing is written to disk; uploads live in memory for the
+session and are gone when the container stops.
+
+### 5. Stop the app
+
+Press **Ctrl+C** in the terminal, then:
+
+    docker compose down
+
+This removes the container. The built image stays, so the next start is fast.
+
+### 6. Start it again later
+
+    docker compose up
+
+No `--build` needed unless the code changed. After a `git pull`, run step 3 again so the
+image picks up the new code.
+
+### Using Docker Desktop instead of the terminal
+
+Once the image exists (step 3 has run once), you can drive it from the GUI:
+
+- **Images** tab → `strategy-robustness` → **Run** → expand *Optional settings* → Host port
+  `8501` → **Run**.
+- **Containers** tab shows it running. Click the `8501:8501` port link to open the app, and
+  use the **Stop** / **Start** buttons instead of steps 5 and 6.
+
+Compose binds the port to `127.0.0.1` (this machine only). Starting from the GUI binds it to
+all interfaces, so the app may be reachable from other machines on your network.
+
+### Share the image as a file (no GitHub, no rebuild)
+
+On the machine that built it:
+
+    docker save -o strategy-robustness.tar strategy-robustness
+
+Copy the `.tar` (about 900 MB) to the other machine, then there:
+
+    docker load -i strategy-robustness.tar
+    docker run --rm -p 127.0.0.1:8501:8501 strategy-robustness
+
+### Without compose
 
     docker build -t strategy-robustness .
     docker run --rm -p 127.0.0.1:8501:8501 strategy-robustness
 
-Run the test suite inside the built image (no browser needed):
+### Run the test suite inside the image (no browser needed)
 
     docker run --rm strategy-robustness python -m pytest -q
+
+### If something goes wrong
+
+| Symptom | Cause and fix |
+|---|---|
+| `cannot connect to the Docker daemon` or `error during connect` | Docker Desktop is not running. Start it, wait for **Engine running**, retry. |
+| `port is already allocated` | Something else uses 8501. In `docker-compose.yml` change `127.0.0.1:8501:8501` to `127.0.0.1:8502:8501` and open http://localhost:8502. |
+| Browser says connection refused | The app has not finished starting, or you opened the Network/External URL. Wait for the "You can now view" line and use http://localhost:8501. |
+| Code changes do not show up | Rebuild: `docker compose up --build`. |
 
 ## Develop
 
