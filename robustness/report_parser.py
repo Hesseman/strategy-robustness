@@ -56,9 +56,10 @@ def parse_money(s: str) -> float:
 
 
 # TradeStation writes large % Profit cells unquoted with thousands separators
-# (e.g. 23,500.00%), which would add a column. Anchored to the cell start so a
-# delimiter after a digit-terminated cell (e.g. "$236.00,500.00%") is never swallowed.
-_PCT_THOUSANDS = re.compile(r"(?<=,)(\d{1,3})((?:,\d{3})+)(\.\d+%)")
+# (e.g. 23,500.00% or -23,500.00%), which would add a column. Anchored to the cell
+# start (optional leading sign) so a delimiter after a digit-terminated cell (e.g.
+# "$236.00,500.00%") is never swallowed.
+_PCT_THOUSANDS = re.compile(r"(?<=,)(-?\d{1,3})((?:,\d{3})+)(\.\d+%)")
 
 
 def _split(line: str) -> list[str]:

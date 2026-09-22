@@ -84,6 +84,7 @@ def test_percent_profit_thousands_comma_does_not_shift_columns(mini_report_text)
         "23,500.00%": [36.00, 16.00],        # thousands comma inside the cell: stripped
         "500.00%": [36.00, 16.00],           # 3-digit percent after a digit-terminated cell: delimiter kept
         "1,234,567.00%": [36.00, 16.00],     # two thousands groups
+        "-23,500.00%": [36.00, 16.00],       # negative with a thousands comma: stripped, sign kept
     }
     for pct, runups in cases.items():
         text = mini_report_text.replace(",0.05%,$36.00,", f",{pct},$36.00,")
