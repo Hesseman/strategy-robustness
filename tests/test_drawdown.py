@@ -20,6 +20,15 @@ def test_unrecovered_episode():
     assert len(eps) == 1 and eps[0]["recovery_i"] is None and eps[0]["depth"] == -10.0
 
 
+def test_drawdown_from_flat_start_is_counted():
+    eps = drawdown_episodes(np.array([-100.0, -100.0, 300.0, 50.0]))
+    assert eps == [{"peak_i": -1, "trough_i": 1, "recovery_i": 2, "depth": -200.0}]
+    times = pd.date_range("2020-01-01", periods=4, freq="7D")
+    r = drawdown_analysis(np.array([-100.0, -100.0, 300.0, 50.0]), times - pd.Timedelta(days=1), times)
+    assert r.max_dd == 200.0 and r.cdar80 == 200.0 and r.capital == 1000.0
+    assert r.worst["peak_time"] == (times - pd.Timedelta(days=1)).min() and r.worst["trough_time"] == times[1]
+
+
 def test_cdar():
     depths = np.array([120.0, 320.0])
     assert cdar(depths, 0.80) == 320.0                     # k = ceil(0.2*2) = 1 -> worst one

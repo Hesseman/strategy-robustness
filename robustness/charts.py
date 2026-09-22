@@ -69,7 +69,8 @@ def fig_equity(dd: DrawdownResult) -> go.Figure:
     fig = go.Figure(go.Scatter(x=dd.times, y=dd.equity, mode="lines", line_color=ACCENT, name="equity"))
     for e in dd.episodes:
         end_i = e["recovery_i"] if e["recovery_i"] is not None else len(dd.times) - 1
-        fig.add_vrect(x0=dd.times[e["peak_i"]], x1=dd.times[end_i], fillcolor=RED, opacity=0.08, line_width=0)
+        x0 = dd.times[e["peak_i"]] if e["peak_i"] >= 0 else dd.times[0]
+        fig.add_vrect(x0=x0, x1=dd.times[end_i], fillcolor=RED, opacity=0.08, line_width=0)
     fig.update_layout(**_LAYOUT, yaxis_title="cumulative $ P&L, 1 contract, gross", xaxis_title="trade close")
     return fig
 

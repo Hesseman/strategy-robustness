@@ -20,23 +20,29 @@ def drawdown_episodes(pnl: np.ndarray) -> list[dict]:
     Accepts: 1D array of per-trade P&L (USD or pct), any numeric dtype.
 
     Returns: list of dicts, one per episode. Each dict has keys:
-      - peak_i: index where equity last peaked before the drawdown
+      - peak_i: index where equity last peaked before the drawdown; -1 means the
+        drawdown is already underway at the flat start (equity never exceeded 0
+        before this drawdown) - the caller maps -1 to a time before the first trade
       - trough_i: index where equity reached its lowest point in this drawdown
       - recovery_i: index where equity recovered to the peak (None if unrecovered)
       - depth: absolute drawdown depth (always <= 0)
 
     Guarantees: depth <= 0; episodes are non-overlapping and chronological;
-      cumsum(pnl)[trough_i] - cumsum(pnl)[peak_i] == depth.
+      a flat 0.0 start point precedes trade 0, so a losing run beginning at the
+      first trade is counted instead of being invisible against an initial peak
+      of its own making; cumsum(pnl)[trough_i] - cumsum(pnl)[peak_i] == depth for
+      peak_i >= 0, and -cumsum(pnl)[trough_i] == depth (peak equity was the flat
+      0.0 start) when peak_i == -1.
     """
-    cum = np.cumsum(np.asarray(pnl, dtype=float))
-    running_max = np.maximum.accumulate(cum)
-    underwater = cum - running_max
+    padded = np.concatenate([[0.0], np.cumsum(np.asarray(pnl, dtype=float))])
+    running_max = np.maximum.accumulate(padded)
+    underwater = padded - running_max
     episodes: list[dict] = []
     in_dd = False; peak_i = 0; trough_i = 0; trough_val = 0.0
-    for i in range(len(cum)):
+    for i in range(len(padded)):
         if underwater[i] >= 0:
             if in_dd:
-                episodes.append({"peak_i": peak_i, "trough_i": trough_i, "recovery_i": i, "depth": float(trough_val)})
+                episodes.append({"peak_i": peak_i - 1, "trough_i": trough_i - 1, "recovery_i": i - 1, "depth": float(trough_val)})
                 in_dd = False
             peak_i = i
         else:
@@ -45,7 +51,7 @@ def drawdown_episodes(pnl: np.ndarray) -> list[dict]:
             elif underwater[i] < trough_val:
                 trough_i, trough_val = i, underwater[i]
     if in_dd:
-        episodes.append({"peak_i": peak_i, "trough_i": trough_i, "recovery_i": None, "depth": float(trough_val)})
+        episodes.append({"peak_i": peak_i - 1, "trough_i": trough_i - 1, "recovery_i": None, "depth": float(trough_val)})
     return episodes
 
 
@@ -157,6 +163,18 @@ def drawdown_analysis(usd_pc: np.ndarray, entry_times: pd.DatetimeIndex, exit_ti
     exit_times = pd.DatetimeIndex(exit_times); entry_times = pd.DatetimeIndex(entry_times)
     order = np.argsort(exit_times.to_numpy(), kind="stable")
     pnl = usd_pc[order]; times = exit_times[order]
+
+    def _t(i: int):
+        """Episode-index -> timestamp, honouring the flat-start convention.
+
+        Accepts: i, an episode's peak_i/trough_i/recovery_i (-1 or a valid
+          position into `times`).
+
+        Returns: times[i] for i >= 0; entry_times.min() for i == -1, since the
+          flat start precedes every trade's own entry.
+        """
+        return times[i] if i >= 0 else entry_times.min()
+
     years = max((exit_times.max() - entry_times.min()).days, 1) / 365.25
     equity = np.cumsum(pnl)
     eps = drawdown_episodes(pnl)
@@ -167,11 +185,11 @@ def drawdown_analysis(usd_pc: np.ndarray, entry_times: pd.DatetimeIndex, exit_ti
     c80 = cdar(depths, beta)
     capital = capital_mult * c80
     annual_usd = float(pnl.sum() / years)
-    pt = [(times[e["trough_i"]] - times[e["peak_i"]]).days for e in eps]
-    pr = [(times[e["recovery_i"]] - times[e["peak_i"]]).days for e in eps if e["recovery_i"] is not None]
+    pt = [(_t(e["trough_i"]) - _t(e["peak_i"])).days for e in eps]
+    pr = [(_t(e["recovery_i"]) - _t(e["peak_i"])).days for e in eps if e["recovery_i"] is not None]
     worst_e = min(eps, key=lambda e: e["depth"]) if eps else None
-    worst = ({"peak_time": times[worst_e["peak_i"]], "trough_time": times[worst_e["trough_i"]],
-              "recovery_time": times[worst_e["recovery_i"]] if worst_e["recovery_i"] is not None else None,
+    worst = ({"peak_time": _t(worst_e["peak_i"]), "trough_time": _t(worst_e["trough_i"]),
+              "recovery_time": _t(worst_e["recovery_i"]) if worst_e["recovery_i"] is not None else None,
               "depth": worst_e["depth"]} if worst_e else {"peak_time": None, "trough_time": None, "recovery_time": None, "depth": 0.0})
     return DrawdownResult(
         n_trades=len(pnl), years=float(years), sum_usd=float(pnl.sum()), annual_usd=annual_usd,
