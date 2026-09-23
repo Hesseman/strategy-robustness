@@ -10,5 +10,5 @@ services:
     image: strategy-robustness
     container_name: strategy-timing
     ports:
-      - "127.0.0.1:8502:8501"
+      - "127.0.0.1:8503:8501"
     command: ["streamlit", "run", "app/timing_app.py", "--server.address=0.0.0.0", "--server.port=8501"]
