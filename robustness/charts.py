@@ -1,4 +1,4 @@
-"""Plotly figures for the five cards. No Streamlit here."""
+"""Plotly figures for the five cards and the timing-sensitivity app. No Streamlit here."""
 from __future__ import annotations
 
 import numpy as np
@@ -8,6 +8,7 @@ from robustness.cost_stress import CostStressResult
 from robustness.drawdown import DrawdownResult
 from robustness.null_entry import RandomEntryResult
 from robustness.temporal import TemporalResult
+from robustness.timing import DelayCurve
 
 ACCENT, MUTED, GREEN, RED, PALE = "#1f5fbf", "#9a9a94", "#2e8b57", "#c0392b", "#dfe7f5"
 _LAYOUT = dict(template="plotly_white", margin=dict(l=40, r=20, t=20, b=40), height=320, showlegend=False)
@@ -81,4 +82,25 @@ def fig_episode_hist(dd: DrawdownResult) -> go.Figure:
     fig.add_vline(x=dd.cdar80, line_color=ACCENT, line_width=3, annotation_text=f"CDaR-80 ${dd.cdar80:,.0f}", annotation_position="top")
     fig.add_vline(x=dd.max_dd, line_color=RED, line_dash="dash", annotation_text=f"max ${dd.max_dd:,.0f}", annotation_position="bottom right")
     fig.update_layout(**_LAYOUT, xaxis_title="drawdown episode depth, $", yaxis_title="episodes")
+    return fig
+
+
+def fig_delay_curve(curve: DelayCurve, point_value_label: str) -> go.Figure:
+    """Gross $ over alive trades vs delay k (k = 0 = as reported, in ACCENT), with the mean %
+    return per trade on a right-hand axis; hover shows how many trades are still alive."""
+    ks = [p.k for p in curve.points]
+    usd = [p.total_usd for p in curve.points]
+    pct = [p.mean_pct * 100 for p in curve.points]
+    hover = [f"k = {p.k}: ${p.total_usd:,.0f} gross, mean {p.mean_pct*100:+.3f}% per trade, "
+             f"{p.n_alive} alive / {p.n_skipped} skipped" for p in curve.points]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=ks, y=usd, mode="lines+markers", line_color=MUTED, hovertext=hover, hoverinfo="text",
+                             marker=dict(size=[12] + [8] * (len(ks) - 1), color=[ACCENT] + [MUTED] * (len(ks) - 1))))
+    fig.add_trace(go.Scatter(x=ks, y=pct, mode="lines", line=dict(color=ACCENT, dash="dot", width=1.5), opacity=0.6,
+                             yaxis="y2", hoverinfo="skip"))
+    fig.add_hline(y=0, line_color=RED, line_dash="dash")
+    fig.update_layout(**_LAYOUT, xaxis=dict(title=f"{curve.kind} delay, bars (k = 0 is the report)", dtick=1),
+                      yaxis_title=f"total $, {point_value_label}",
+                      yaxis2=dict(title="mean return per trade, % (dotted)", overlaying="y", side="right", showgrid=False))
+    fig.update_layout(margin=dict(l=40, r=60, t=20, b=40))
     return fig
