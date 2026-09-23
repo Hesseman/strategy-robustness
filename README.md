@@ -17,6 +17,28 @@ The tests take the strategy as given. They do not know how many strategies or pa
 were tried, so there is no multiple-testing correction — a pass means "we could not break it
 with these tests", not "it works".
 
+## Timing sensitivity app (port 8502)
+
+A second, smaller app in the same image. Same two exports, one question: **how sensitive is
+the return to the timing of the trades?** It draws two curves over a delay of k = 0..10 bars
+(sidebar slider up to 20): the gross $ when every entry is taken k bars late with the exits as
+reported, and when every exit is taken k bars late with the entries as reported. k = 0 is the
+report's own fills. It is a picture of fragility, not a gate: no verdict, no p-value.
+
+A moved leg fills at the open of the bar it moves to; a trade whose delayed entry reaches its
+exit bar, or whose delayed exit falls past the last bar, is skipped at that k and counted
+(`n alive`). Returns are gross, one contract, no costs, trades independent; a *fixed hold*
+mode moves the exit along with a delayed entry so the hold length is kept.
+
+`docker compose up --build` starts both apps (robustness on http://localhost:8501, timing on
+**http://localhost:8502**); `docker compose up timing` starts only this one. Without compose:
+
+    docker run --rm -p 127.0.0.1:8502:8501 strategy-robustness streamlit run app/timing_app.py --server.address=0.0.0.0 --server.port=8501
+
+Out of scope: re-running the strategy's own stop/target logic on the shifted position, cost
+haircuts, position limits or netting of overlapping trades, entries earlier than the signal,
+and any gate or p-value.
+
 ## Exporting the two files from TradeStation
 
 1. **Strategy Performance Report** — open it for the strategy, then save it as **CSV** (not
@@ -122,7 +144,7 @@ Copy the `.tar` (about 900 MB) to the other machine, then there:
 | Symptom | Cause and fix |
 |---|---|
 | `cannot connect to the Docker daemon` or `error during connect` | Docker Desktop is not running. Start it, wait for **Engine running**, retry. |
-| `port is already allocated` | Something else uses 8501. In `docker-compose.yml` change `127.0.0.1:8501:8501` to `127.0.0.1:8502:8501` and open http://localhost:8502. |
+| `port is already allocated` | Something else uses 8501 (or 8502 for the timing app). In `docker-compose.yml` change the left-hand port, e.g. `127.0.0.1:8501:8501` to `127.0.0.1:8503:8501`, and open http://localhost:8503. |
 | Browser says connection refused | The app has not finished starting, or you opened the Network/External URL. Wait for the "You can now view" line and use http://localhost:8501. |
 | Code changes do not show up | Rebuild: `docker compose up --build`. |
 
@@ -132,6 +154,7 @@ Copy the `.tar` (about 900 MB) to the other machine, then there:
     .venv/Scripts/python -m pip install -r requirements.txt
     .venv/Scripts/python -m pytest -q
     .venv/Scripts/python -m streamlit run app/streamlit_app.py
+    .venv/Scripts/python -m streamlit run app/timing_app.py --server.port 8502
 
 Dev-only: set `SR_SAMPLE_REPORT` and `SR_SAMPLE_BARS` to local file paths and a
 "Load sample files" button appears. Real report/bar files are never committed.
