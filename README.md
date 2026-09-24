@@ -25,6 +25,12 @@ the return to the timing of the trades?** It draws two curves over a delay of k 
 reported, and when every exit is taken k bars late with the entries as reported. k = 0 is the
 report's own fills. It is a picture of fragility, not a gate: no verdict, no p-value.
 
+For reference each chart also runs the other way, left of zero: the entry (or exit) taken 1..10
+bars **earlier**. No strategy can act before its signal fires, so that side is hindsight and not
+tradable. It shows how much of the move each signal lags, and a "Where timing matters" block
+compares the two legs per trade: if an earlier entry gains more than an earlier exit, the entry
+trigger is the one worth working on, and the other way round.
+
 A moved leg fills at the open of the bar it moves to; a trade whose delayed entry reaches its
 exit bar, or whose delayed exit falls past the last bar, is skipped at that k and counted
 (`n alive`). Returns are gross, one contract, no costs, trades independent; a *fixed hold*
@@ -35,7 +41,7 @@ mode moves the exit along with a delayed entry so the hold length is kept.
 
     docker run --rm -p 127.0.0.1:8503:8501 strategy-robustness streamlit run app/timing_app.py --server.address=0.0.0.0 --server.port=8501
 
-Out of scope: re-running the strategy's own stop/target logic on the shifted position, cost
+Out of scope: treating the earlier (hindsight) side as a tradable result, re-running the strategy's own stop/target logic on the shifted position, cost
 haircuts, position limits or netting of overlapping trades, entries earlier than the signal,
 and any gate or p-value.
 

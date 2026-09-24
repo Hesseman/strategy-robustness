@@ -48,6 +48,8 @@ def test_timing_app_renders_on_sample(tmp_path, monkeypatch):
     assert re.search(r"(?<!\\)\$\d", text) is None, "an unescaped dollar amount reached st.markdown (renders as LaTeX)"
     assert "\\$" in text
     assert len(at.get("plotly_chart")) == 2
+    assert "Where timing matters" in text and "hindsight: entering 1 bar earlier" in text
+    assert "hindsight: exiting 1 bar earlier" in text and "best shift in -10..+10" in text
 
 
 def test_timing_app_renders_demo_and_mode_change():
@@ -73,3 +75,14 @@ def test_fig_delay_curve_has_one_point_per_delay():
         fig = charts.fig_delay_curve(c, "1 contract, gross")
         assert len(fig.data[0].x) == 8 and list(fig.data[0].x) == list(range(8))
         assert fig.data[0].marker.color[0] == charts.ACCENT and fig.data[1].yaxis == "y2"
+
+
+def test_fig_delay_curve_with_earlier_side():
+    bars = make_bars(n=4000, seed=30)
+    trades = make_trades(bars, n=80, seed=31, planted_edge=True)
+    r = run_timing(parse_report(trades_to_report_text(trades)), load_bars(bars_to_ts_text(bars)), max_k=5)
+    fig = charts.fig_delay_curve(r.entry, "1 contract, gross", early=r.entry_early)
+    assert list(fig.data[0].x) == list(range(-5, 6))
+    assert fig.data[0].y[5] == r.entry.points[0].total_usd and fig.data[0].y[0] == r.entry_early.points[5].total_usd
+    assert fig.data[0].marker.symbol[0] == "circle-open" and fig.data[0].marker.symbol[6] == "circle"
+    assert len(fig.data[1].x) == 11

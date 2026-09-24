@@ -196,3 +196,58 @@ def test_deterministic_and_no_mutation():
     t_before = t.copy()
     delay_curve(t, bars2.open.to_numpy(), PV, "entry", mode="fixed_hold", max_k=5)
     pd.testing.assert_frame_equal(t, t_before)
+
+
+@pytest.mark.parametrize("direction", [1, -1])
+def test_earlier_shift_exact_values(direction):
+    o = _ramp().open.to_numpy()
+    t = _trade(10, 20, direction=direction)
+    for k in range(1, 10):
+        pct, pts, alive = delayed_returns(t, o, k, "entry", early=True)
+        assert alive[0] and pct[0] == pytest.approx(direction * (120 / (110 - k) - 1))
+        assert pts[0] == pytest.approx(direction * (120 - (110 - k)))
+        pct, pts, alive = delayed_returns(t, o, k, "exit", early=True)
+        assert alive[0] and pct[0] == pytest.approx(direction * ((120 - k) / 110 - 1))
+    _, _, alive = delayed_returns(t, o, 10, "exit", early=True)
+    assert not alive[0], "an exit moved back onto its entry bar is skipped"
+    c = delay_curve(t, o, PV, "entry", max_k=10, early=True)
+    assert c.shift == "earlier" and c.kind == "entry"
+    assert [p.n_alive for p in c.points] == [1] * 11  # entry 10 - 10 = bar 0 still exists
+    assert [p.total_usd for p in c.points] == pytest.approx([direction * (10 + k) * PV for k in range(11)])
+
+
+def test_earlier_skip_rules():
+    o = _ramp().open.to_numpy()
+    c = delay_curve(_trade(3, 20), o, PV, "entry", max_k=6, early=True)
+    assert [p.n_alive for p in c.points] == [1, 1, 1, 1, 0, 0, 0], "entry before the first bar is skipped"
+    c = delay_curve(_trade(10, 13), o, PV, "exit", max_k=5, early=True)
+    assert [p.n_alive for p in c.points] == [1, 1, 1, 0, 0, 0]
+    assert c.first_nonpositive_k is None
+
+
+def test_earlier_fixed_hold_and_k0():
+    bars = make_bars(n=4000, seed=11)
+    t = make_trades(bars, n=60, seed=12)
+    o = bars.open.to_numpy()
+    for leg in ("entry", "exit"):
+        c = delay_curve(t, o, PV, leg, max_k=3, early=True)
+        assert np.array_equal(c.per_trade_pct[:, 0], pct_returns(t)) and c.points[0].retention == 1.0
+    e, x, d = t.entry_idx.to_numpy(), t.exit_idx.to_numpy(), t.direction.to_numpy()
+    for k in (1, 5):
+        pct, _, alive = delayed_returns(t, o, k, "entry", mode="fixed_hold", early=True)
+        assert alive.all()  # make_trades never enters before bar 10
+        assert pct == pytest.approx(d * (o[x - k] / o[e - k] - 1))
+    a = delay_curve(t, o, PV, "exit", mode="fixed_exit", max_k=4, early=True)
+    b = delay_curve(t, o, PV, "exit", mode="fixed_hold", max_k=4, early=True)
+    assert _jsonable(a.points) == _jsonable(b.points)
+
+
+def test_run_timing_has_earlier_curves():
+    rep, bars, trades = _report_and_bars()
+    r = run_timing(rep, bars, max_k=6)
+    for c, kind in ((r.entry_early, "entry"), (r.exit_early, "exit")):
+        assert c.shift == "earlier" and c.kind == kind and len(c.points) == 7
+        assert c.points[0].total_usd == r.entry.points[0].total_usd
+    assert r.entry.shift == "later" and r.exit.shift == "later"
+    # planted-edge exits sit at the best open in hindsight: moving them earlier must give some back too
+    assert r.exit_early.points[1].mean_usd < r.exit.points[0].mean_usd
