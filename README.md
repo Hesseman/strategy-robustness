@@ -1,5 +1,10 @@
 # Strategy Robustness App
 
+> **Retired 2026-09-25 — use [Strategy Robustness V2](https://github.com/Hesseman/strategy-robustness-V2).**
+> V2 has everything in this repository — the five cards and the timing-sensitivity test (now a
+> section of the main page) — plus the MultiWalk surface tests. This repository is archived
+> (read-only) and kept for history.
+
 Upload a TradeStation **Strategy Performance Report** (saved as CSV) and the **bar data** the
 strategy ran on (Data Window export, same symbol and interval). The app joins the trade list
 to the bars and runs the trade-list subset of our robustness battery. No files? Click **Try
